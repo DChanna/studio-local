@@ -16,7 +16,6 @@
     "@monaco-editor/react": "^4.7.0",
     "@phosphor-icons/react": "^2.1.10",
     "@radix-ui/react-slot": "^1.2.3",
-    "@tailwindcss/oxide-linux-arm64-gnu": "^4.1.16",
     "@tiptap/extension-code-block-lowlight": "^3.7.2",
     "@tiptap/extension-highlight": "^3.7.2",
     "@tiptap/extension-image": "^3.7.2",
