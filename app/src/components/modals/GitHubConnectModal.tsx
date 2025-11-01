@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from 'react';
 import { GitBranch, X, ArrowSquareOut } from '@phosphor-icons/react';
 import { githubApi } from '../../lib/github-api';

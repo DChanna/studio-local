@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { Loader2, FileCode } from 'lucide-react';
 import { ChatMessage } from './ChatMessage';

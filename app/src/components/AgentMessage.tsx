@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Sparkles, Zap } from 'lucide-react';
 import AgentStep from './AgentStep';

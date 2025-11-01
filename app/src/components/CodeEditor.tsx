@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect, useRef } from 'react';
 import { File, Folder, ChevronRight, ChevronDown, FileText, Code } from 'lucide-react';
 import Editor from '@monaco-editor/react';

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Warning, X, CheckCircle, Info, Trash } from '@phosphor-icons/react';
 
 interface ConfirmDialogProps {

@@ -397,14 +397,23 @@ class DockerContainerManager(BaseContainerManager):
             # Service configuration
             "--label", f"traefik.http.services.{service_name}.loadbalancer.server.port={port}",
             "--label", f"traefik.docker.network={self.network_name}",
-
-            # Subdomain-based routing for HTTPS (production)
-            "--label", f"traefik.http.routers.{service_name}-secure.rule=Host(`{hostname}`)",
-            "--label", f"traefik.http.routers.{service_name}-secure.entrypoints=websecure",
-            "--label", f"traefik.http.routers.{service_name}-secure.tls=true",
-            "--label", f"traefik.http.routers.{service_name}-secure.tls.certresolver={get_settings().traefik_cert_resolver}",
-            "--label", f"traefik.http.routers.{service_name}-secure.tls.domains[0].main={hostname}",
         ]
+
+        settings = get_settings()
+
+        # Only advertise HTTPS when we're on a real domain. Let's Encrypt rejects *.localhost
+        if not hostname.endswith(".localhost"):
+            labels.extend([
+                "--label", f"traefik.http.routers.{service_name}-secure.rule=Host(`{hostname}`)",
+                "--label", f"traefik.http.routers.{service_name}-secure.entrypoints=websecure",
+                "--label", f"traefik.http.routers.{service_name}-secure.tls=true",
+            ])
+
+            if settings.traefik_cert_resolver:
+                labels.extend([
+                    "--label", f"traefik.http.routers.{service_name}-secure.tls.certresolver={settings.traefik_cert_resolver}",
+                    "--label", f"traefik.http.routers.{service_name}-secure.tls.domains[0].main={hostname}",
+                ])
 
         return labels
     
@@ -715,12 +724,47 @@ class DockerContainerManager(BaseContainerManager):
         has_tesslate = os.path.exists(tesslate_md_path)
 
         if not skip_validation and not has_tesslate:
-            # Only validate Vite files for non-TESSLATE projects
-            required_files = ["package.json", "vite.config.js", "index.html"]
-            missing_files = [f for f in required_files if not os.path.exists(os.path.join(abs_project_path, f))]
+            # Ensure at least a package.json exists for generic Node/JS projects
+            required_files = ["package.json"]
+            missing_files = [
+                f for f in required_files if not os.path.exists(os.path.join(abs_project_path, f))
+            ]
 
             if missing_files:
                 raise FileNotFoundError(f"Missing required files: {', '.join(missing_files)}")
+
+            # Detect common frontend frameworks to provide helpful validation
+            vite_config_candidates = [
+                "vite.config.js",
+                "vite.config.ts",
+                "vite.config.mjs",
+                "vite.config.cjs",
+            ]
+            has_vite_config = any(
+                os.path.exists(os.path.join(abs_project_path, candidate))
+                for candidate in vite_config_candidates
+            )
+
+            next_config_candidates = [
+                "next.config.js",
+                "next.config.ts",
+                "next.config.mjs",
+                "next.config.cjs",
+            ]
+            has_next_config = any(
+                os.path.exists(os.path.join(abs_project_path, candidate))
+                for candidate in next_config_candidates
+            )
+
+            if has_vite_config and not os.path.exists(os.path.join(abs_project_path, "index.html")):
+                raise FileNotFoundError(
+                    "Missing required files for Vite project: index.html"
+                )
+
+            if not has_vite_config and not has_next_config:
+                print(
+                    "[INFO] No Vite or Next.js config detected. Proceeding with generic project validation."
+                )
         elif has_tesslate:
             print(f"[INFO] TESSLATE.md found, skipping Vite-specific file validation")
         else:
@@ -742,7 +786,7 @@ class DockerContainerManager(BaseContainerManager):
             print(f"[RUN] Starting Traefik-enabled container with hostname routing...")
             run_cmd = [
                 "docker", "run",
-                "--rm",                                                  # Remove on exit
+                # Note: Not using --rm to allow log inspection after crashes
                 "--user", "root",                                        # Run as root to avoid permission issues with Windows volumes
                 "--name", container_name,                                # Multi-user container name
                 "-v", f"{host_project_path}:/app",                      # Source code volume (live sync!)

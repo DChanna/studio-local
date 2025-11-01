@@ -1,14 +1,19 @@
-FROM node:20-alpine
+# ./app/Dockerfile
+FROM node:20-bookworm-slim
 
 WORKDIR /app
 
-# Install dependencies first (will be preserved in anonymous volume)
-COPY package*.json ./
-RUN npm install --force && npm cache clean --force
+# (optional) common tools some setups expect
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+  && rm -rf /var/lib/apt/lists/*
 
-# Copy application code
+# deps (include optional so rollup's native binary is installed)
+COPY package*.json ./
+ENV npm_config_loglevel=info
+RUN npm install --include=optional && npm cache clean --force
+
+# app code
 COPY . .
 
 EXPOSE 5173
-
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["npm","run","dev","--","--host","0.0.0.0"]

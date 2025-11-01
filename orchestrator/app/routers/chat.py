@@ -12,6 +12,7 @@ from ..schemas import (
 from ..auth import get_current_active_user
 from ..config import get_settings
 from ..utils.resource_naming import get_project_path
+from ..utils.text_sanitizer import sanitize_text_for_storage
 from openai import AsyncOpenAI
 import json
 import os
@@ -1176,13 +1177,15 @@ async def save_file(file_path: str, code: str, project_id: UUID, user_id: UUID, 
             )
             db_file = result.scalar_one_or_none()
 
+            sanitized_code = sanitize_text_for_storage(code)
+
             if db_file:
-                db_file.content = code
+                db_file.content = sanitized_code
             else:
                 db_file = ProjectFile(
                     project_id=project_id,
                     file_path=file_path,
-                    content=code
+                    content=sanitized_code
                 )
                 db.add(db_file)
 

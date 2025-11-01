@@ -11,6 +11,7 @@ from ..auth import get_current_active_user
 from ..config import get_settings
 from ..utils.slug_generator import generate_project_slug
 from ..utils.resource_naming import get_project_path
+from ..utils.text_sanitizer import sanitize_text_for_storage
 import os
 import shutil
 import asyncio
@@ -315,7 +316,7 @@ async def create_project(
 
                             try:
                                 with open(file_full_path, 'r', encoding='utf-8', errors='replace') as f:
-                                    content = f.read()
+                                    content = sanitize_text_for_storage(f.read())
 
                                 db_file = ProjectFile(
                                     project_id=db_project.id,
@@ -458,7 +459,7 @@ async def create_project(
 
                             try:
                                 with open(file_full_path, 'r', encoding='utf-8', errors='replace') as f:
-                                    content = f.read()
+                                    content = sanitize_text_for_storage(f.read())
 
                                 db_file = ProjectFile(
                                     project_id=db_project.id,
@@ -513,7 +514,7 @@ async def create_project(
 
                         try:
                             with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
-                                content = f.read()
+                                content = sanitize_text_for_storage(f.read())
 
                             db_file = ProjectFile(
                                 project_id=db_project.id,
@@ -583,7 +584,7 @@ async def create_project(
                     try:
                         # Read file content
                         with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
-                            content = f.read()
+                            content = sanitize_text_for_storage(f.read())
 
                         # Save to database
                         db_file = ProjectFile(
@@ -770,7 +771,13 @@ async def start_dev_container(
         from ..dev_server_manager import get_container_manager
         container_manager = get_container_manager()
         logger.info(f"[START-CONTAINER] Starting container for project {project_id}...")
-        url = await container_manager.start_container(project_path, str(project_id), current_user.id, project_slug=project.slug)
+        url = await container_manager.start_container(
+            project_path,
+            str(project_id),
+            current_user.id,
+            project_slug=project.slug,
+            skip_validation=bool(project.has_git_repo)
+        )
         logger.info(f"[START-CONTAINER] ✅ Container started successfully: {url}")
         return {"url": url, "hostname": url}
     except Exception as e:
@@ -954,7 +961,7 @@ async def get_dev_server_url(
                             raise
 
                 with open(file_full_path, 'w', encoding='utf-8') as f:
-                    f.write(db_file.content)
+                    f.write(db_file.content or "")
 
                 logger.debug(f"[DEV-URL] Created file: {db_file.file_path}")
 
@@ -962,7 +969,13 @@ async def get_dev_server_url(
 
         from ..dev_server_manager import get_container_manager
         container_manager = get_container_manager()
-        url = await container_manager.start_container(project_path, str(project_id), current_user.id, project_slug=project.slug)
+        url = await container_manager.start_container(
+            project_path,
+            str(project_id),
+            current_user.id,
+            project_slug=project.slug,
+            skip_validation=bool(project.has_git_repo)
+        )
         logger.info(f"[DEV-URL] ✅ Dev container started successfully: {url}")
 
         return {
@@ -979,9 +992,13 @@ async def get_dev_server_url(
             detail={
                 "error": "Failed to start development environment",
                 "message": str(e),
-                "user_id": current_user.id,
-                "project_id": project_id,
-                "hint": f"Check Kubernetes pod logs: kubectl logs -l app=dev-environment,user-id={current_user.id},project-id={project_id} -n tesslate-user-environments"
+                "user_id": str(current_user.id),
+                "project_id": str(project_id),
+                "hint": (
+                    "Check Kubernetes pod logs: "
+                    f"kubectl logs -l app=dev-environment,user-id={current_user.id},"
+                    f"project-id={project_id} -n tesslate-user-environments"
+                )
             }
         )
 
@@ -1155,13 +1172,15 @@ async def save_project_file(
         )
         existing_file = result.scalar_one_or_none()
 
+        sanitized_content = sanitize_text_for_storage(content)
+
         if existing_file:
-            existing_file.content = content
+            existing_file.content = sanitized_content
         else:
             new_file = ProjectFile(
                 project_id=project_id,
                 file_path=file_path,
-                content=content
+                content=sanitized_content
             )
             db.add(new_file)
 
@@ -1570,7 +1589,7 @@ async def fork_project(
             forked_file = ProjectFile(
                 project_id=forked_project.id,
                 file_path=source_file.file_path,
-                content=source_file.content
+                content=sanitize_text_for_storage(source_file.content or "")
             )
             db.add(forked_file)
             files_copied += 1

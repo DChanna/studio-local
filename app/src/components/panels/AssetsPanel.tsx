@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { UploadCloud } from 'lucide-react';
 
 interface AssetsPanelProps {

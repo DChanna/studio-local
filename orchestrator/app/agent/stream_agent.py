@@ -17,6 +17,7 @@ import aiofiles
 from .base import AbstractAgent
 from openai import AsyncOpenAI
 from ..utils.resource_naming import get_project_path
+from ..utils.text_sanitizer import sanitize_text_for_storage
 
 logger = logging.getLogger(__name__)
 
@@ -266,13 +267,15 @@ class StreamAgent(AbstractAgent):
                 )
                 db_file = result.scalar_one_or_none()
 
+                sanitized_code = sanitize_text_for_storage(code)
+
                 if db_file:
-                    db_file.content = code
+                    db_file.content = sanitized_code
                 else:
                     db_file = ProjectFile(
                         project_id=project_id,
                         file_path=file_path,
-                        content=code
+                        content=sanitized_code
                     )
                     db.add(db_file)
 

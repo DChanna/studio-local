@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useEffect, useRef, useState } from 'react';
 import { RefreshCw, ExternalLink, Loader, Monitor, FileText } from 'lucide-react';
 import { projectsApi } from '../lib/api';

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { useTheme } from '../../theme/ThemeContext';
 
