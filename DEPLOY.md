@@ -19,11 +19,13 @@
 4. **Set Environment Variables**
    Click on the orchestrator service → Variables:
    ```
-   DATABASE_URL=${DATABASE_URL}  (auto-filled by Railway)
+   DATABASE_URL=${{Postgres.DATABASE_URL}}  (auto-filled by Railway)
    SECRET_KEY=<generate-random-32-char-string>
    LITELLM_API_KEY=<your-litellm-key-if-needed>
    DOMAIN=<your-railway-domain>.railway.app
    ```
+
+   Note: The DATABASE_URL is automatically converted from `postgresql://` to `postgresql+asyncpg://` by the application code to support async database operations.
 
 5. **Deploy**
    - Railway auto-deploys on push to main

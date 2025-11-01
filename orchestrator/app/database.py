@@ -4,8 +4,15 @@ from .config import get_settings
 
 settings = get_settings()
 
+# Convert postgresql:// to postgresql+asyncpg:// for async operations
+database_url = settings.database_url
+if database_url.startswith("postgresql://"):
+    database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+elif database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+
 engine = create_async_engine(
-    settings.database_url,
+    database_url,
     echo=True,
     future=True,
     pool_pre_ping=True,  # Validate connections before use
@@ -16,7 +23,7 @@ engine = create_async_engine(
         "server_settings": {
             "jit": "off"  # Disable JIT for better connection stability
         }
-    } if settings.database_url.startswith("postgresql") else {}
+    } if database_url.startswith("postgresql") else {}
 )
 
 AsyncSessionLocal = sessionmaker(
